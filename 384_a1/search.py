@@ -91,26 +91,29 @@ def depthFirstSearch(problem):
     "*** YOUR CODE HERE ***"
     # use stack to implement DFS
     open = util.Stack()
-    # implement node as a dictionary consists of a list of actions and a list of states
+    # implement node as a tuple of succ tuples
     start_state = problem.getStartState()
-    actions = []
-    node = {'actions': actions, 'states':[start_state]}
-    
+    node = ((start_state, None, 0),)    
     open.push(node)
     
     while not open.isEmpty():
         current_node = open.pop()
-        current_state = current_node['states'][-1]
+        current_state = current_node[-1][0]
+        #get list of states and actions
+        states = []
+        actions = []
+        for state, action, cost in current_node:
+            states.append(state)
+            if action is not None:
+                actions.append(action)
+        
         if problem.isGoalState(current_state):
-            return current_node['actions']
+            return actions
         
         for succ in problem.getSuccessors(current_state):
             #path checking
-            if not succ[0] in current_node['states']:
-                next_node = copy.deepcopy(current_node)
-                next_node['actions'].append(succ[1])
-                next_node['states'].append(succ[0])
-                open.push(next_node)
+            if not succ[0] in states:
+                open.push(current_node + (succ,))
                 
     return False
 
@@ -119,10 +122,9 @@ def breadthFirstSearch(problem):
     "*** YOUR CODE HERE ***"
     # use Queue to implement DFS
     open = util.Queue()
-    # implement node as a dictionary consists of a list of actions and a list of states
+    # implement node as a tuple of succ tuples
     start_state = problem.getStartState()
-    actions = []
-    node = ((problem.getStartState(), None, 0),)
+    node = ((start_state, None, 0),)
     open.push(node)
     # seen is implemented for cycle checking
     seen = {start_state:0}
@@ -131,9 +133,11 @@ def breadthFirstSearch(problem):
         current_node = open.pop()
         current_state = current_node[-1][0]
         actions = []
+        #get list of actions
         for state, action, cost in current_node:
             if action is not None:
-                actions.append(action)      
+                actions.append(action)   
+                
         current_cost = problem.getCostOfActions(actions)
         # cost checking for cycle checking
         if current_cost <= seen[current_state]:
@@ -155,34 +159,38 @@ def uniformCostSearch(problem):
     "*** YOUR CODE HERE ***"
     # use PriorityQueue to implement UCS, PriorityQueue pop out item with lowest priority
     open = util.PriorityQueue()
-    # implement node as a dictionary consists of a list of actions and a list of states
+    # implement node as a tuple of succ tuples
     start_state = problem.getStartState()
-    actions = []
-    node = {'actions': actions, 'states':[start_state]}
+    node = ((start_state, None, 0),)
     open.push(node, 0)
     # seen is implemented for cycle checking
     seen = {start_state:0}
     
     while not open.isEmpty():
         current_node = open.pop()
-        current_state = current_node['states'][-1]
-        current_cost = problem.getCostOfActions(current_node['actions'])
+        current_state = current_node[-1][0]
+        actions = []
+        #get list of actions
+        for state, action, cost in current_node:
+            if action is not None:
+                actions.append(action)   
+                
+        current_cost = problem.getCostOfActions(actions)
         # cost checking for cycle checking
         if current_cost <= seen[current_state]:
             if problem.isGoalState(current_state):
-                return current_node['actions']
+                return actions
             
-            for succ in problem.getSuccessors(current_state):
+            sucessors = problem.getSuccessors(current_state)
+            for succ in sucessors:
                 #cycle checking
                 next_cost = current_cost + succ[2]
                 if (not succ[0] in seen) or (next_cost < seen[succ[0]]):
-                    next_node = copy.deepcopy(current_node)
-                    next_node['actions'].append(succ[1])
-                    next_node['states'].append(succ[0])
-                    open.push(next_node, next_cost)
+                    open.push(current_node + (succ,), next_cost)
                     seen[succ[0]] = next_cost
                 
     return False
+
 
 def nullHeuristic(state, problem=None):
     """
@@ -196,34 +204,34 @@ def aStarSearch(problem, heuristic=nullHeuristic):
     "*** YOUR CODE HERE ***"
     # use PriorityQueue to implement A*, PriorityQueue pop out item with lowest priority
     open = util.PriorityQueue()
-    
-    # implement node as a dictionary consists of a list of actions and a list of states
+    # implement node as a tuple of succ tuples
     start_state = problem.getStartState()
-    actions = []
-    node = {'actions': actions, 'states':[start_state]}
-    # add heuristic to priority
+    node = ((start_state, None, 0),)
     open.push(node, heuristic(start_state, problem))
     # seen is implemented for cycle checking
     seen = {start_state:0}
     
     while not open.isEmpty():
         current_node = open.pop()
-        current_state = current_node['states'][-1]
-        current_cost = problem.getCostOfActions(current_node['actions'])
+        current_state = current_node[-1][0]
+        actions = []
+        #get list of actions
+        for state, action, cost in current_node:
+            if action is not None:
+                actions.append(action)   
+                
+        current_cost = problem.getCostOfActions(actions)
         # cost checking for cycle checking
         if current_cost <= seen[current_state]:
             if problem.isGoalState(current_state):
-                return current_node['actions']
+                return actions
             
-            for succ in problem.getSuccessors(current_state):
+            sucessors = problem.getSuccessors(current_state)
+            for succ in sucessors:
                 #cycle checking
                 next_cost = current_cost + succ[2]
                 if (not succ[0] in seen) or (next_cost < seen[succ[0]]):
-                    next_node = copy.deepcopy(current_node)
-                    next_node['actions'].append(succ[1])
-                    next_node['states'].append(succ[0])
-                    # add heuristic to priority
-                    open.push(next_node, next_cost + heuristic(succ[0], problem))
+                    open.push(current_node + (succ,), next_cost + heuristic(succ[0], problem))
                     seen[succ[0]] = next_cost
                 
     return False

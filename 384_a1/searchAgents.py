@@ -289,11 +289,13 @@ class CornersProblem(search.SearchProblem):
         # in initializing the problem
         "*** YOUR CODE HERE ***"
         # store position and visited corners in state
+        #   visited_corners is a tuple of 0 or 1 with size == len(self.corners)
+        #   0: not visited, 1: visited
         # since list can not be key in seen(a dict), use tuple instead
-        visited_corners = ()
+        visited_corners = [0 for i in range(len(self.corners))]
         if self.startingPosition in self.corners:
-            visited_corners = (self.startingPosition)
-        self.starting_state = (self.startingPosition, visited_corners)
+            visited_corners[self.corners.index(self.startingPosition)] = 1
+        self.starting_state = (self.startingPosition, tuple(visited_corners))
 
     def getStartState(self):
         """
@@ -308,7 +310,7 @@ class CornersProblem(search.SearchProblem):
         Returns whether this search state is a goal state of the problem.
         """
         "*** YOUR CODE HERE ***"
-        if len(self.corners) == len(state[1]):
+        if 0 not in state[1]:
             return True
         else:
             return False
@@ -342,11 +344,11 @@ class CornersProblem(search.SearchProblem):
             next_position = (nextx, nexty)
             
             if not self.walls[nextx][nexty]:
-                next_visited_corners = deepcopy(state[1])
+                next_visited_corners = list(deepcopy(state[1]))
                 # if next position is corner, update state[1]
-                if (next_position in self.corners) and (not (next_position in state[1])):
-                    next_visited_corners = next_visited_corners + (next_position,)
-                next_state = (next_position, next_visited_corners)
+                if next_position in self.corners:
+                    next_visited_corners[self.corners.index(next_position)] = 1
+                next_state = (next_position, tuple(next_visited_corners))
                 successors.append((next_state, action, 1))
         
         self._expanded += 1 # DO NOT CHANGE
