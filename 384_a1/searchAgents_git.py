@@ -287,31 +287,40 @@ class CornersProblem(search.SearchProblem):
         self._expanded = 0 # DO NOT CHANGE; Number of search nodes expanded
         # Please add any code here which you would like to use
         # in initializing the problem
-        "*** YOUR CODE HERE ***"
-        # store position and visited corners in state
-        # since list can not be key in seen(a dict), use tuple instead
-        visited_corners = ()
+
+        # start code
+        # states are defined as tuples :
+        # ( < state of current position (x,y) > ,
+        #   < list of corner states that have been visited [0,0,1,1] > )
+        #     *(a value of 1 states that corner has been visited)
+
+        cornersVisited = [0 for i in range(len(self.corners))]
+        # account for starting state in one of the corners
         if self.startingPosition in self.corners:
-            visited_corners = (self.startingPosition)
-        self.starting_state = (self.startingPosition, visited_corners)
+            cornersVisited[self.corners.index(self.startingPosition)] = 1
+        self.startingState = (self.startingPosition, tuple(cornersVisited))
+        # end code
 
     def getStartState(self):
         """
         Returns the start state (in your state space, not the full Pacman state
         space)
         """
-        "*** YOUR CODE HERE ***"
-        return self.starting_state
+        # start code
+        return self.startingState
+        # end code
 
     def isGoalState(self, state):
         """
         Returns whether this search state is a goal state of the problem.
         """
-        "*** YOUR CODE HERE ***"
-        if len(self.corners) == len(state[1]):
+        # start code
+        # when the list of corner states are all set to 1, we know all corners have been visited
+        if 0 not in state[1]:
             return True
         else:
             return False
+        # end code
 
     def getSuccessors(self, state):
         """
@@ -333,22 +342,27 @@ class CornersProblem(search.SearchProblem):
             #   nextx, nexty = int(x + dx), int(y + dy)
             #   hitsWall = self.walls[nextx][nexty]
 
-            "*** YOUR CODE HERE ***"
+            # start code
             from copy import deepcopy
-            
-            x,y = state[0]
+
+            x, y = state[0]
             dx, dy = Actions.directionToVector(action)
             nextx, nexty = int(x + dx), int(y + dy)
-            next_position = (nextx, nexty)
-            
+            nextPositionState = (nextx, nexty)
+            # assume the cost of an action is always 1
+            action_cost = 1
             if not self.walls[nextx][nexty]:
-                next_visited_corners = deepcopy(state[1])
-                # if next position is corner, update state[1]
-                if (next_position in self.corners) and (not (next_position in state[1])):
-                    next_visited_corners = next_visited_corners + (next_position,)
-                next_state = (next_position, next_visited_corners)
-                successors.append((next_state, action, 1))
-        
+                # if the current position is a corner state, set the according corner
+                # state in the list to 1, resetting the value again to 1 does not matter.
+
+                # need to deepcopy so we do not tamper with the previous state's data
+                nextCornersVisitedState = list(deepcopy(state[1]))
+                if nextPositionState in self.corners:
+                    nextCornersVisitedState[self.corners.index(nextPositionState)] = 1
+                nextState = (nextPositionState, tuple(nextCornersVisitedState))
+                successors.append((nextState, action, action_cost))
+            # end code
+
         self._expanded += 1 # DO NOT CHANGE
         return successors
 
@@ -382,8 +396,38 @@ def cornersHeuristic(state, problem):
     corners = problem.corners # These are the corner coordinates
     walls = problem.walls # These are the walls of the maze, as a Grid (game.py)
 
-    "*** YOUR CODE HERE ***"
-    return 0 # Default to trivial solution
+    # start code
+    # Find the closest corner (by manhattan distance) from the states position,
+    # then update players position to that corner, find the closest corner from that
+    # corner position, continue until all remaining corners are visited. The direct
+    # manhattan distance to each corner has a lower bound to the real optimal
+    # solution, so this heuristic is admissible.
+    # Return the cost of that total path as the heuristic cost.
+    from copy import deepcopy
+
+    if problem.isGoalState(state):
+        return 0
+
+    # need to deepcopy so we do not tamper with the previous state's data
+    statePosition = deepcopy(state[0])
+    stateCornersVisited = list(deepcopy(state[1]))
+    cornersToSearch = []
+    for index, value in enumerate(stateCornersVisited):
+        if value == 0:
+            cornersToSearch.append(corners[index])
+
+    totalCost = 0
+    while len(cornersToSearch) > 0:
+        distanceToCorners = [abs(statePosition[0] - x[0]) + abs(statePosition[1] - x[1]) for x in cornersToSearch]
+        closestCornerDistance = min(distanceToCorners)
+        visitedCornerIndex = distanceToCorners.index(closestCornerDistance)
+        totalCost += closestCornerDistance
+        statePosition = cornersToSearch[visitedCornerIndex]
+        cornersToSearch.remove(cornersToSearch[visitedCornerIndex])
+
+    return totalCost
+    # end code
+
 
 class AStarCornersAgent(SearchAgent):
     "A SearchAgent for FoodSearchProblem using A* and your foodHeuristic"
@@ -474,8 +518,66 @@ def foodHeuristic(state, problem):
 
     """
     position, foodGrid = state
-    "*** YOUR CODE HERE ***"
-    return 0
+
+    # start code
+    # Use a minimum span tree (MST), with Kruskal's algorithm. We know that this
+    # heuristic value will always be less than the optimum value which essentially is the
+    # Travelling Salesman Problem. Make the MST vertices by locations of the food and the player.
+    # Using the manhattan distance, the MST edges spanning those positions will reach each
+    # food and player. MST has a lower bound of cost than the Travelling Salesman Problem
+    # so we have an admissible heuristic.
+    if problem.isGoalState(state):
+        return 0
+
+    from copy import deepcopy
+    # need to deepcopy so we do not tamper with the previous state's data
+    foodList = deepcopy(foodGrid.asList())
+    # append players position to the set of vertices
+    foodList.append(position)
+    edges = []
+    edgesWithCost = []
+    for food in foodList:
+        for otherFood in foodList:
+            # prevent from adding duplicate edges
+            if otherFood != food and (otherFood, food) not in edges:
+                edges.append((food, otherFood))
+                edgesWithCost.append((abs(food[0] - otherFood[0]) + abs(food[1] - otherFood[1]), food, otherFood))
+
+    # Kruskal's algorithm
+
+    # edges now ordered from minimum cost
+    edgesWithCost.sort()
+    rootVertice = {}
+    verticeRank = {}
+
+    for foodVertice in foodList:
+        rootVertice[foodVertice] = foodVertice
+        verticeRank[foodVertice] = 0
+
+    def findRootVertice(vertice):
+        if rootVertice[vertice] != vertice:
+            rootVertice[vertice] = findRootVertice(rootVertice[vertice])
+        return rootVertice[vertice]
+
+    minimumSpanningTreeCost = 0
+    for cost, foodVertice1, foodVertice2 in edgesWithCost:
+        rootVertice1 = findRootVertice(foodVertice1)
+        rootVertice2 = findRootVertice(foodVertice2)
+        # if both vertices have the same root, the edge makes a cycle therefore
+        # the edge is not apart of the MST
+        if rootVertice1 != rootVertice2:
+            # append new edge and cost to MST (for our purposes we only care for cost),
+            # update the root and rank of the vertices
+            if verticeRank[rootVertice1] > verticeRank[rootVertice2]:
+                rootVertice[rootVertice2] = rootVertice1
+            else:
+                rootVertice[rootVertice1] = rootVertice2
+                if verticeRank[rootVertice1] == verticeRank[rootVertice2]:
+                    verticeRank[rootVertice2] += 1
+            minimumSpanningTreeCost += cost
+
+    return minimumSpanningTreeCost
+    # end code
 
 class ClosestDotSearchAgent(SearchAgent):
     "Search for all food using a sequence of searches"
@@ -505,8 +607,9 @@ class ClosestDotSearchAgent(SearchAgent):
         walls = gameState.getWalls()
         problem = AnyFoodSearchProblem(gameState)
 
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        # start code
+        return search.breadthFirstSearch(problem)
+        # end code
 
 class AnyFoodSearchProblem(PositionSearchProblem):
     """
@@ -541,8 +644,12 @@ class AnyFoodSearchProblem(PositionSearchProblem):
         """
         x,y = state
 
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        # start code
+        if state in self.food.asList():
+            return True
+        else:
+            return False
+        # end code
 
 def mazeDistance(point1, point2, gameState):
     """
