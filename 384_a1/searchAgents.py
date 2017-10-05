@@ -385,8 +385,8 @@ def cornersHeuristic(state, problem):
     walls = problem.walls # These are the walls of the maze, as a Grid (game.py)
 
     "*** YOUR CODE HERE ***"
-    # given state postion and all unvisited corners
-    # distance between 2 postion computed using manhattanHeuristic
+    # given state position and all unvisited corners
+    # distance between 2 position computed using manhattanHeuristic
     # cornersHeuristic = 
     from copy import deepcopy  
     # check goal state
@@ -475,6 +475,46 @@ class AStarFoodSearchAgent(SearchAgent):
         self.searchFunction = lambda prob: search.aStarSearch(prob, foodHeuristic)
         self.searchType = FoodSearchProblem
 
+
+def manhattan_heuristic(position1, position2):
+    
+    return abs(position1[0] - position2[0]) + abs(position1[1] - position2[1])
+
+
+def get_mst(state, distance_heuristic):
+    from copy import deepcopy
+    
+    current_position, food_grid = state
+    food_positions = deepcopy(food_grid.asList())
+    open = util.PriorityQueue()
+    mst = []
+    
+    # initialize variables
+    distance = {}
+    edge = {}
+    distance[current_position] = 0
+    edge[current_position] = None
+    open.push(current_position, 0)    
+    for position in food_positions:
+        distance[position] = float('inf')
+        open.push(position, distance[position])
+     
+    # compute mst   
+    while not open.isEmpty():
+        next_position = open.pop()
+        if next_position != current_position:
+            food_positions.remove(next_position)    
+        mst.append(edge[next_position])
+        for position in food_positions:
+            d_h = distance_heuristic(position, next_position)
+            if distance[position] > d_h:
+                open.update(position, d_h)
+                distance[position] = d_h
+                edge[position] = (next_position, position)
+                
+    return mst
+
+    
 def foodHeuristic(state, problem):
     """Your heuristic for the FoodSearchProblem goes here.
 
@@ -503,7 +543,22 @@ def foodHeuristic(state, problem):
     """
     position, foodGrid = state
     "*** YOUR CODE HERE ***"
-    return 0
+    # Vertices: food positions
+    # Edges: between any two vertices
+    # Weight: approxited using manhattanHeuristic
+    # Compute the total weight of MST of the graph as heuristic
+    # Since MST < TSP ~= FoodSearch < 2MST, Then admissible
+    if problem.isGoalState(state):
+        return 0
+    
+    mst = get_mst(state, manhattan_heuristic)
+    heuristic = 0
+    for edge in mst:
+        if edge is not None:
+            heuristic += manhattan_heuristic(edge[0], edge[1])
+            
+    return heuristic
+    
 
 class ClosestDotSearchAgent(SearchAgent):
     "Search for all food using a sequence of searches"
@@ -534,7 +589,8 @@ class ClosestDotSearchAgent(SearchAgent):
         problem = AnyFoodSearchProblem(gameState)
 
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return search.breadthFirstSearch(problem)
+
 
 class AnyFoodSearchProblem(PositionSearchProblem):
     """
@@ -570,7 +626,10 @@ class AnyFoodSearchProblem(PositionSearchProblem):
         x,y = state
 
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        if state in self.food.asList():
+            return True
+        else:
+            return False
 
 def mazeDistance(point1, point2, gameState):
     """
