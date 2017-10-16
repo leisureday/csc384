@@ -1,0 +1,14 @@
+python autograder.py
+python autograder.py -q q2
+python autograder.py -t test_cases/q2/0-small-tree
+You can force graphics by using the --graphics flag, or force no graphics by using the --no-graphics flag.
+python pacman.py
+python pacman.py -p ReflexAgent
+python pacman.py -p ReflexAgent -l testClassic
+q1
+python pacman.py -p ReflexAgent -l testClassic
+python pacman.py --frameTime 0 -p ReflexAgent -k 1
+python pacman.py --frameTime 0 -p ReflexAgent -k 2
+python autograder.py -q q1
+python autograder.py -q q1 --no-graphics
+
