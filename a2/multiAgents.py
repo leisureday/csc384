@@ -133,11 +133,43 @@ class MultiAgentSearchAgent(Agent):
         self.evaluationFunction = util.lookup(evalFn, globals())
         self.depth = int(depth)
 
+
+# q2 helper function
+def DFMiniMax(self, gameState, agentIndex, depth):
+    bestAction = None
+    # depth bound and terminal check
+    if gameState.isWin() or gameState.isLose() or depth >= self.depth:
+        return bestAction, self.evaluationFunction(gameState)
+    if agentIndex == 0: # pacman: max player
+        score = -float('inf')
+    else: # ghosts: min player
+        score = float('inf')
+    legalActions = gameState.getLegalActions(agentIndex)
+    for action in legalActions:
+        # get successor gameState, agentIndex, depth
+        # after last ghost, agentIndex goes back to 0
+        # everytime agentIndex hits 0, depth ++
+        succesorGameState = gameState.generateSuccessor(agentIndex, action)
+        succesorAgentIndex = agentIndex + 1
+        if succesorAgentIndex >= gameState.getNumAgents():
+            succesorAgentIndex = 0
+        succesorDepth = depth
+        if succesorAgentIndex == 0:
+            succesorDepth += 1
+        # compute minimax action and score
+        succesorAction, succesorScore = DFMiniMax(self, succesorGameState, succesorAgentIndex, succesorDepth)
+        if agentIndex == 0 and score < succesorScore:
+            bestAction, score = action, succesorScore
+        if agentIndex != 0 and score > succesorScore:
+            bestAction, score = action, succesorScore
+    return bestAction, score
+
+    
 class MinimaxAgent(MultiAgentSearchAgent):
     """
       Your minimax agent (question 2)
     """
-
+    
     def getAction(self, gameState):
         """
           Returns the minimax action from the current gameState using self.depth
@@ -156,7 +188,49 @@ class MinimaxAgent(MultiAgentSearchAgent):
             Returns the total number of agents in the game
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        action, score = DFMiniMax(self, gameState, 0, 0)
+        return action
+
+
+# q3 helper function
+def AlphaBeta(self, gameState, agentIndex, depth, alpha, beta):
+    bestAction = None
+    # depth bound and terminal check
+    if gameState.isWin() or gameState.isLose() or depth >= self.depth:
+        return bestAction, self.evaluationFunction(gameState)
+    if agentIndex == 0: # pacman: max player
+        score = -float('inf')
+    else: # ghosts: min player
+        score = float('inf')
+    legalActions = gameState.getLegalActions(agentIndex)
+    for action in legalActions:
+        # get successor gameState, agentIndex, depth
+        # after last ghost, agentIndex goes back to 0
+        # everytime agentIndex hits 0, depth ++
+        succesorGameState = gameState.generateSuccessor(agentIndex, action)
+        succesorAgentIndex = agentIndex + 1
+        if succesorAgentIndex >= gameState.getNumAgents():
+            succesorAgentIndex = 0
+        succesorDepth = depth
+        if succesorAgentIndex == 0:
+            succesorDepth += 1
+        # compute minimax action and score
+        # do alpha beta pruning
+        succesorAction, succesorScore = AlphaBeta(self, succesorGameState, succesorAgentIndex, succesorDepth, alpha, beta)
+        if agentIndex == 0:
+            if score < succesorScore:
+                bestAction, score = action, succesorScore
+            if score >= beta:
+                return bestAction, score
+            alpha = max(alpha, score)
+        if agentIndex != 0:
+            if score > succesorScore:
+                bestAction, score = action, succesorScore
+            if score <= alpha:
+                return bestAction, score
+            beta = min(beta, score)
+    return bestAction, score
+
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
     """
@@ -168,8 +242,43 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
           Returns the minimax action using self.depth and self.evaluationFunction
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        action, score = AlphaBeta(self, gameState, 0, 0, -float('inf'), float('inf'))
+        return action
+        
+        
+# q3 helper function
+def Expectimax(self, gameState, agentIndex, depth):
+    bestAction = None
+    # depth bound and terminal check
+    if gameState.isWin() or gameState.isLose() or depth >= self.depth:
+        return bestAction, self.evaluationFunction(gameState)
+    if agentIndex == 0: # pacman: max player
+        score = -float('inf')
+    else: # ghosts: chance player
+        score = 0
+    legalActions = gameState.getLegalActions(agentIndex)
+    numLegalActions = len(legalActions)
+    for action in legalActions:
+        # get successor gameState, agentIndex, depth
+        # after last ghost, agentIndex goes back to 0
+        # everytime agentIndex hits 0, depth ++
+        succesorGameState = gameState.generateSuccessor(agentIndex, action)
+        succesorAgentIndex = agentIndex + 1
+        if succesorAgentIndex >= gameState.getNumAgents():
+            succesorAgentIndex = 0
+        succesorDepth = depth
+        if succesorAgentIndex == 0:
+            succesorDepth += 1
+        # compute expectimax action and score
+        # no bestAction for ghost (chance player)
+        succesorAction, succesorScore = Expectimax(self, succesorGameState, succesorAgentIndex, succesorDepth)
+        if agentIndex == 0 and score < succesorScore:
+            bestAction, score = action, succesorScore
+        if agentIndex != 0:
+            score = score + (1/float(numLegalActions))*succesorScore
+    return bestAction, score
 
+    
 class ExpectimaxAgent(MultiAgentSearchAgent):
     """
       Your expectimax agent (question 4)
@@ -183,8 +292,10 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
           legal moves.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
-
+        action, score = Expectimax(self, gameState, 0, 0)
+        return action
+    
+        
 def betterEvaluationFunction(currentGameState):
     """
       Your extreme ghost-hunting, pellet-nabbing, food-gobbling, unstoppable
@@ -193,7 +304,41 @@ def betterEvaluationFunction(currentGameState):
       DESCRIPTION: <write something here so we know what you did>
     """
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    # try using BFS to find the distances instead of using manhattanDistance
+    pacmanPosition = currentGameState.getPacmanPosition()    
+    food = currentGameState.getFood()
+    capsulesPostions = currentGameState.getCapsules()
+    ghostStates = currentGameState.getGhostStates()
+    ghostPositions = currentGameState.getGhostPositions()    
+    ScaredTimes = [ghostState.scaredTimer for ghostState in ghostStates]
+    height = food.height
+    width = food.width
+    score = currentGameState.getScore()
+    # want to minimize the minFoodDist and not run into ghost
+    minFoodDist = float('inf')
+    minGhostDist = float('inf')
+    minCapsuleDist = float('inf')
+    
+    for x in range(width):
+        for y in range(height):
+            if food[x][y] is True:
+                foodDist = manhattanDistance(pacmanPosition, (x, y))
+                if foodDist < minFoodDist: minFoodDist = foodDist
+                
+    for capsulesPosition in capsulesPostions:
+        capsuleDist = manhattanDistance(pacmanPosition, capsulesPosition)
+        if capsuleDist < minCapsuleDist: minCapsuleDist = capsuleDist
+            
+    for ghostPosition in ghostPositions:
+        currentGhostDist = manhattanDistance(pacmanPosition, ghostPosition)
+        if currentGhostDist < minGhostDist: minGhostDist = currentGhostDist
+   
+    # if run into ghost in next move, set score to be small
+    if ScaredTimes[0] == 0 and minGhostDist <= 1:
+        score = score - 1000
+    score = score + 1/float(minFoodDist)
+    
+    return score
 
 # Abbreviation
 better = betterEvaluationFunction
