@@ -130,14 +130,14 @@ def sudokuCSP(initial_sudoku_board, model='neq'):
         if model == 'neq':
             constraint_list.extend(post_all_pairs(row))
         elif model == 'alldiff':
-            util.raiseNotDefined()
+            constraint_list.extend(post_all_diff(row))
 
     for colj in range(len(var_array[0])):
         scope = map(lambda row: row[colj], var_array)
         if model == 'neq':
             constraint_list.extend(post_all_pairs(scope))
         elif model == 'alldiff':
-            util.raiseNotDefined()
+            constraint_list.extend(post_all_diff(row))
 
     for i in [0, 3, 6]:
         for j in [0, 3, 6]:
@@ -149,10 +149,18 @@ def sudokuCSP(initial_sudoku_board, model='neq'):
             if model == 'neq':
                 constraint_list.extend(post_all_pairs(scope))
             elif model == 'alldiff':
-                util.raiseNotDefined()
+                constraint_list.extend(post_all_diff(row))
 
     vars = [var for row in var_array for var in row]
     return CSP("Sudoku", vars, constraint_list)
+
+def post_all_diff(var_list):
+    name_list = []
+    for var in var_list:
+        name_list.append(var_list[i].name())
+    name = "("+",".join(name_list)+")"
+    constraint = AllDiffConstraint(name, var_list)
+    return [constraint]
 
 def post_all_pairs(var_list):
     '''create a not equal constraint between all pairs of variables in var_list
