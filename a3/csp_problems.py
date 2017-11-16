@@ -137,7 +137,7 @@ def sudokuCSP(initial_sudoku_board, model='neq'):
         if model == 'neq':
             constraint_list.extend(post_all_pairs(scope))
         elif model == 'alldiff':
-            constraint_list.extend(post_all_diff(row))
+            constraint_list.extend(post_all_diff(scope))
 
     for i in [0, 3, 6]:
         for j in [0, 3, 6]:
@@ -149,7 +149,7 @@ def sudokuCSP(initial_sudoku_board, model='neq'):
             if model == 'neq':
                 constraint_list.extend(post_all_pairs(scope))
             elif model == 'alldiff':
-                constraint_list.extend(post_all_diff(row))
+                constraint_list.extend(post_all_diff(scope))
 
     vars = [var for row in var_array for var in row]
     return CSP("Sudoku", vars, constraint_list)
@@ -157,7 +157,7 @@ def sudokuCSP(initial_sudoku_board, model='neq'):
 def post_all_diff(var_list):
     name_list = []
     for var in var_list:
-        name_list.append(var_list[i].name())
+        name_list.append(var.name())
     name = "("+",".join(name_list)+")"
     constraint = AllDiffConstraint(name, var_list)
     return [constraint]
