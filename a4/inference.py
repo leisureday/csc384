@@ -325,8 +325,12 @@ class ParticleFilter(InferenceModule):
         weight with each position) is incorrect and may produce errors.
         """
         "*** YOUR CODE HERE ***"
-        "*** END YOUR CODE HERE ***"
-
+        self.particles = []
+        while len(self.particles) < self.numParticles:
+            for position in self.legalPositions:
+                if len(self.particles) < self.numParticles:
+                    self.particles.append(position)
+        "*** END YOUR CODE HERE ***"   
 
     def observe(self, observation, gameState):
         """
@@ -356,10 +360,22 @@ class ParticleFilter(InferenceModule):
         distance between a particle and Pacman's position.
         """
         noisyDistance = observation
+        # emissionModel[dist(p)] = Pr(et|xt=p)
         emissionModel = busters.getObservationDistribution(noisyDistance)
         pacmanPosition = gameState.getPacmanPosition()
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        # get weights of each particle and resample the particles
+        if noisyDistance is not None:
+            weights = util.Counter() # all key has default value 0
+            for particle in self.particles:
+                weights[particle] += emissionModel[util.manhattanDistance(particle, pacmanPosition)]  
+            if weights.totalCount() > 0:
+                for i in range(self.numParticles):
+                    self.particles[i] = util.sample(weights)
+            else: # case 2
+                self.initializeUniformly(gameState)
+        else: # case 1
+            self.particles = [self.getJailPosition()] * self.numParticles
         "*** END YOUR CODE HERE ***"
 
 
@@ -391,7 +407,11 @@ class ParticleFilter(InferenceModule):
         Counter object)
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        belief = util.Counter()
+        for particle in self.particles:
+            belief[particle] += 1
+        belief.normalize()
+        return belief
         "*** END YOUR CODE HERE ***"
 
 
