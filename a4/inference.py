@@ -187,15 +187,26 @@ class ExactInference(InferenceModule):
         # Replace this code with a correct observation update
         # Be sure to handle the "jail" edge case where the ghost is eaten
         # and noisyDistance is None
-
-        allPossible = util.Counter()
-        for p in self.legalPositions:
-            trueDistance = util.manhattanDistance(p, pacmanPosition)
-            if emissionModel[trueDistance] > 0:
-                allPossible[p] = 1.0
+        
+        #print(self.getJailPosition())
+        #print(noisyDistance)
+        #print(emissionModel)
+        #print(pacmanPosition)
+        #print(self.beliefs)
+        #print(self.legalPositions)
+        
+        # The counter class is an extension of the standard pythoy dictionary type
+        allPossible = util.Counter()      
+        if noisyDistance == None:
+            allPossible[self.getJailPosition()] = 1.0
+        else:
+            for ghostPosition in self.legalPositions:
+                distance = util.manhattanDistance(ghostPosition, pacmanPosition)
+                # emissionModel[trueDistance] = Pr(noisyDistance | trueDistance) = Pr(et|xt)
+                # self.beliefs[p] = Pr(Xt=p |e_t, e_{t-1}, e_{t-2}, ..., e_1)
+                allPossible[ghostPosition] = emissionModel[distance] * self.beliefs[ghostPosition]
 
         "*** END YOUR CODE HERE ***"
-
         allPossible.normalize()
         self.beliefs = allPossible
 
@@ -232,10 +243,7 @@ class ExactInference(InferenceModule):
         self.legalPositions,
 
         newPostDist[p] = Pr( ghost is at position p at time t + 1 | ghost is at position oldPos at time t )
-
-
-        newPostDist[p] = Pr( ghost is at position p at time t + 1 | ghost is at position oldPos at time t )
-
+        
         You may also find it useful to loop over key, value pairs in
         newPosDist, like:
 
@@ -275,7 +283,13 @@ class ExactInference(InferenceModule):
 
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        allPossible = util.Counter()
+        for oldPos in self.legalPositions:
+            newPosDist = self.getPositionDistribution(self.setGhostPosition(gameState, oldPos))
+            for newPos, prob in newPosDist.items():
+                allPossible[newPos] += prob*self.beliefs[oldPos]
+        allPossible.normalize()
+        self.beliefs = allPossible
         "*** END YOUR CODE HERE ***"
 
     def getBeliefDistribution(self):
