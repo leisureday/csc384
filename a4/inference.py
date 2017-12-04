@@ -196,19 +196,19 @@ class ExactInference(InferenceModule):
         #print(self.legalPositions)
         
         # The counter class is an extension of the standard pythoy dictionary type
-        allPossible = util.Counter()      
+        beliefs = util.Counter()      
         if noisyDistance == None:
-            allPossible[self.getJailPosition()] = 1.0
+            beliefs[self.getJailPosition()] = 1.0
         else:
             for ghostPosition in self.legalPositions:
                 distance = util.manhattanDistance(ghostPosition, pacmanPosition)
                 # emissionModel[trueDistance] = Pr(noisyDistance | trueDistance) = Pr(et|xt)
                 # self.beliefs[p] = Pr(Xt=p |e_t, e_{t-1}, e_{t-2}, ..., e_1)
-                allPossible[ghostPosition] = emissionModel[distance] * self.beliefs[ghostPosition]
+                beliefs[ghostPosition] = emissionModel[distance] * self.beliefs[ghostPosition]
 
         "*** END YOUR CODE HERE ***"
-        allPossible.normalize()
-        self.beliefs = allPossible
+        beliefs.normalize()
+        self.beliefs = beliefs
 
     def elapseTime(self, gameState):
         """Update self.beliefs in response to a time step passing from the
@@ -283,13 +283,13 @@ class ExactInference(InferenceModule):
 
         """
         "*** YOUR CODE HERE ***"
-        allPossible = util.Counter()
+        beliefs = util.Counter()
         for oldPos in self.legalPositions:
             newPosDist = self.getPositionDistribution(self.setGhostPosition(gameState, oldPos))
             for newPos, prob in newPosDist.items():
-                allPossible[newPos] += prob*self.beliefs[oldPos]
-        allPossible.normalize()
-        self.beliefs = allPossible
+                beliefs[newPos] += prob*self.beliefs[oldPos]
+        beliefs.normalize()
+        self.beliefs = beliefs
         "*** END YOUR CODE HERE ***"
 
     def getBeliefDistribution(self):
@@ -394,9 +394,21 @@ class ParticleFilter(InferenceModule):
         a belief distribution.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        # when enter, self.particles represents pr(xt-1|et-1,...,e1)
+        # update it st self.particles represents pr(xt|et-1,...,e1)
+        # newPostDist[p] = pr(xt=p|xt-1=oldPos)
+        # for each particle, sample a new particle based on newPosDist
+        newParticles = []
+        visitedPositions = []
+        newPosDists = {}
+        for particle in self.particles:
+            if particle not in visitedPositions:
+                visitedPositions.append(particle)
+                newPosDists[particle] = self.getPositionDistribution(self.setGhostPosition(gameState, particle))
+            newParticle = util.sample(newPosDists[particle])
+            newParticles.append(newParticle)
+        self.particles = newParticles     
         "*** END YOUR CODE HERE ***"
-
 
 
     def getBeliefDistribution(self):
