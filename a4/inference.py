@@ -357,7 +357,7 @@ class ParticleFilter(InferenceModule):
         a belief distribution.
 
         You may also want to use util.manhattanDistance to calculate the
-        distance between a particle and Pacman's position.
+        distance between a particle and Pacman's tuplePosition.
         """
         noisyDistance = observation
         # emissionModel[dist(p)] = Pr(et|xt=p)
@@ -498,7 +498,15 @@ class JointParticleFilter:
         weight with each position) is incorrect and may produce errors.
         """
         "*** YOUR CODE HERE ***"
-
+        self.particles = []
+        # note tuplePostions contain list of tuples of postions corresponds to number of ghost
+        tuplePositions = list(itertools.product(self.legalPositions, repeat = self.numGhosts))
+        random.shuffle(tuplePositions)
+        
+        while len(self.particles) < self.numParticles:
+            for tuplePosition in tuplePositions:
+                if len(self.particles) < self.numParticles:
+                    self.particles.append(tuplePosition)        
         "*** END YOUR CODE HERE ***"
 
 
@@ -559,6 +567,7 @@ class JointParticleFilter:
                the captured ghost is updated the precise position later---so
                this corresponds to multiplying the weight by probability 1
         """
+        # emissionModel[dist(p)] = Pr(et|xt=p).
         pacmanPosition = gameState.getPacmanPosition()
         noisyDistances = gameState.getNoisyGhostDistances()
         if len(noisyDistances) < self.numGhosts:
@@ -566,10 +575,30 @@ class JointParticleFilter:
         emissionModels = [busters.getObservationDistribution(dist) for dist in noisyDistances]
 
         "*** YOUR CODE HERE ***"
-
+        # for each distinct particle, compute weight as sum of weights of all the same particle
+        # for each particle, compute weight as product of porobability of each postion in that particle.
+        weights = util.Counter()
+        for particle in self.particles:
+            product = 1.0
+            for i in range(self.numGhosts):
+                if noisyDistances[i] == None:
+                    particle = self.getParticleWithGhostInJail(particle, i)
+                else:
+                    product *= emissionModels[i][util.manhattanDistance(particle[i], pacmanPosition)]
+            weights[particle] += product      
+        if weights.totalCount() > 0:
+            weights.normalize()
+            for i in range(self.numParticles):
+                self.particles[i] = util.sample(weights) 
+        else: # case 1
+            self.initializeParticles()
+        for index, particle in enumerate(self.particles): # case 2
+            for i in range(self.numGhosts):
+                if noisyDistances[i] == None:
+                    self.particles[index] = self.getParticleWithGhostInJail(particle, i)                    
         "*** END YOUR CODE HERE ***"
 
-
+            
     def getParticleWithGhostInJail(self, particle, ghostIndex):
         """
         Takes a particle (as a tuple of ghost positions) and returns a particle
@@ -629,14 +658,21 @@ class JointParticleFilter:
             # now loop through and update each entry in newParticle...
 
             "*** YOUR CODE HERE ***"
-
+            for i in range(self.numGhosts):
+                newPosDist = getPositionDistributionForGhost(setGhostPositions(gameState, newParticle), i, self.ghostAgents[i])
+                newParticle[i] = util.sample(newPosDist) 
             "*** END YOUR CODE HERE ***"
             newParticles.append(tuple(newParticle))
         self.particles = newParticles
+        
 
     def getBeliefDistribution(self):
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        beliefs = util.Counter()
+        for particle in self.particles:
+            beliefs[particle] += 1.0
+        beliefs.normalize()
+        return beliefs
         "*** END YOUR CODE HERE ***"
 
 
